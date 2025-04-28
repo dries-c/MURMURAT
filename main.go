@@ -5,13 +5,16 @@ import (
 	"MURMURAT/protocol/message"
 	"encoding/hex"
 	"fmt"
+	"log"
+	"net"
+	"time"
 )
 
 //TIP <p>To run your code, right-click the code and select <b>Run</b>.</p> <p>Alternatively, click
 // the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.</p>
 
 func main() {
-	testRSA()
+	testPCAP()
 }
 
 func testAES() {
@@ -52,7 +55,7 @@ func testRSA() {
 
 		fmt.Printf("Received DataMessage with ID: %d\n", dataMessage.ID())
 		fmt.Printf("Data: %s\n", string(dataMessage.Data))
-		
+
 		publicKeyBytes, err := hex.DecodeString("ad33331f521c44bd5383017092131484dc266ad4847136cba3a91e056e097be03bcdb0eb8f5bfeb83a72f89c044784fa53efec532c5009f5604f2dba52628383bac10c7e9ae7ba61d4d4a691fa05f5daf3f8eb83b56eef252baca852b04cb7db70c917b6d828b2b2b7a2a4ad4f6c98ea7305ec60cf5416abcf3540f2322176cb46bfa9fbcc178e849a6fa30dd39766bc99d865737af825dda3559965fc06f0a36f51c8c6080167178ef8455a0b1233ed685efe49b9ad5261d8e71040dc6c19062807813e5e7504f0b3a4db1e6ed2046dfb1229d8c3100708a08704577177168ee85d7884524220a0806d3518e74b0f2cf1dfc47ddbaf0efc2da973c510fd28a2f12986ee925aaa394bd4b3387d766a230c5ba882a120b385c8367fa458593d62dab79815d5226d5f4f2d32b582c96a66a8011deb55e0d09cf55ec1e6a95254ea525556335104233db95035e54a2ce11afee79b45e5ce076a23b3ed7555ce6e582f437db7916dd0e1fbca5fd11f8116720966398eb2e3a8ead6db45a9d8699566b2494d8f793caf882c88dab9a3f928f722f8259e4557d8fc541adf427479637cc3a95f7c905a0f1c95af81e5d291d0b8dd6c10781ddc91f39208850c5347e00261d55bb5d8399ced0ded47d5b1414d197a064121c428cbd09b6d1d8e0fd4c6c8e9e9dfee4439640d154eec7b429ef33929e3ba9b5917715ca16d133e68fd44dd")
 		if err != nil {
 			return fmt.Errorf("failed to decode public key: %w", err)
@@ -80,6 +83,44 @@ func testRSA() {
 	}
 
 	fmt.Println("Data message decoded successfully")
+}
+
+func testPCAP() {
+	packetHandler := handler.NewPacketHandler()
+
+	expectedBytes := []byte("Oh Great Leader of Cordovania, beacon of wisdom and strength, we humbly offer our deepest gratitude. Under your guiding hand, our nation prospers, our people stand united, and our future shines bright. Your vision brings peace, your courage inspires, and your justice uplifts the worthy. We thank you for the blessings of stability, the gift of progress, and the unwavering hope you instill in every heart. May your wisdom continue to illuminate our path, and may Cordovania flourish under your eternal guidance. With loyalty and devotion, we give thanks.")
+
+	var previousData []byte
+	packetHandler.RegisterListener(message.IDData, func(msg message.Message) error {
+		dataMessage, ok := msg.(*message.DataMessage)
+		if !ok {
+			return fmt.Errorf("invalid message type")
+		}
+
+		timestamp := time.Unix(int64(dataMessage.Timestamp), 0)
+		if timestamp.Month() == time.February && timestamp.Day() == 14 {
+			if previousData != nil {
+				xorCiphertexts := handler.XORBytes(previousData, dataMessage.Data)
+				recoveredPlainText := handler.XORBytes(xorCiphertexts, expectedBytes)
+
+				fmt.Println("Recovered Plaintext:", string(recoveredPlainText))
+			}
+
+			previousData = dataMessage.Data
+		}
+
+		return nil
+	})
+
+	IP := net.ParseIP("77.102.50.25")
+	if IP == nil {
+		log.Fatal("Invalid IP address")
+	}
+
+	err := LoadPCAP("aac-r-ts-capture-fbropt.pcapng", IP, packetHandler)
+	if err != nil {
+		log.Fatalf("Error loading PCAP: %v", err)
+	}
 }
 
 func testDecodeDH() {

@@ -44,9 +44,6 @@ func (h *PacketHander) Handle(data []byte) error {
 		return fmt.Errorf("read message data: %w", err)
 	}
 
-	fmt.Printf("Received message with ID: %d\n", msg.ID())
-	fmt.Printf("Message data: %v\n", msg)
-
 	if listeners, exists := h.listener[msg.ID()]; exists {
 		for _, listener := range listeners {
 			if err := listener(msg); err != nil {

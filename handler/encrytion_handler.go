@@ -39,3 +39,15 @@ func (e *EncryptionHandler) xORKeyStream(streamText []byte, nonce []byte) ([]byt
 
 	return text, nil
 }
+
+func XORBytes(a, b []byte) []byte {
+	if len(a) != len(b) {
+		panic("lengths of a and b must be equal")
+	}
+
+	result := make([]byte, len(a))
+	for i := range a {
+		result[i] = a[i] ^ b[i]
+	}
+	return result
+}
