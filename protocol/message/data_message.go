@@ -3,11 +3,11 @@ package message
 import "MURMURAT/protocol"
 
 type DataMessage struct {
-	nonce       []byte
-	timestamp   uint32
-	data        []byte
-	publicKeyId []byte
-	signature   []byte
+	Nonce       []byte
+	Timestamp   uint32
+	Data        []byte
+	PublicKeyId []byte
+	Signature   []byte
 }
 
 func (x *DataMessage) ID() uint8 {
@@ -17,10 +17,10 @@ func (x *DataMessage) ID() uint8 {
 func (x *DataMessage) Marshal(r protocol.IO) error {
 	var length uint16
 	r.BEUint16(&length)
-	r.Bytes(&x.nonce, 1)
-	r.BEUint32(&x.timestamp)
-	r.Bytes(&x.data, int(length-1-4-4-512)) // Stupid implementation
-	r.Bytes(&x.publicKeyId, 4)
-	r.Bytes(&x.signature, 512)
+	r.Bytes(&x.Nonce, 1)
+	r.BEUint32(&x.Timestamp)
+	r.Bytes(&x.Data, int(length-1-4-4-512)) // Stupid protocol spec
+	r.Bytes(&x.PublicKeyId, 4)
+	r.Bytes(&x.Signature, 512)
 	return nil
 }

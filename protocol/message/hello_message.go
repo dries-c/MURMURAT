@@ -3,8 +3,8 @@ package message
 import "MURMURAT/protocol"
 
 type HelloMessage struct {
-	publicKeyId  []byte
-	rsaPublicKey []byte
+	PublicKeyId  []byte
+	RsaPublicKey []byte
 }
 
 func (x *HelloMessage) ID() uint8 {
@@ -12,7 +12,7 @@ func (x *HelloMessage) ID() uint8 {
 }
 
 func (x *HelloMessage) Marshal(r protocol.IO) error {
-	r.Bytes(&x.publicKeyId, 4)
-	r.Bytes(&x.rsaPublicKey, 512)
+	r.Bytes(&x.PublicKeyId, 4)
+	r.Bytes(&x.RsaPublicKey, 512)
 	return nil
 }

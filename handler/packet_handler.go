@@ -8,13 +8,22 @@ import (
 )
 
 type PacketHander struct {
-	pool message.Pool
+	pool     message.Pool
+	listener map[uint8][]func(message.Message) error
 }
 
 func NewPacketHandler() *PacketHander {
 	return &PacketHander{
-		pool: message.NewPool(),
+		pool:     message.NewPool(),
+		listener: make(map[uint8][]func(message.Message) error),
 	}
+}
+
+func (h *PacketHander) RegisterListener(id uint8, listener func(message.Message) error) {
+	if _, exists := h.listener[id]; !exists {
+		h.listener[id] = []func(message.Message) error{}
+	}
+	h.listener[id] = append(h.listener[id], listener)
 }
 
 func (h *PacketHander) Handle(data []byte) error {
@@ -36,7 +45,15 @@ func (h *PacketHander) Handle(data []byte) error {
 	}
 
 	fmt.Printf("Received message with ID: %d\n", msg.ID())
-	// print message data
 	fmt.Printf("Message data: %v\n", msg)
+
+	if listeners, exists := h.listener[msg.ID()]; exists {
+		for _, listener := range listeners {
+			if err := listener(msg); err != nil {
+				return fmt.Errorf("listener error: %w", err)
+			}
+		}
+	}
+
 	return nil
 }
