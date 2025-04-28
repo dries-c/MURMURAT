@@ -3,7 +3,7 @@ package message
 import "MURMURAT/protocol"
 
 type DataMessage struct {
-	Nonce       []byte
+	Nonce       uint8
 	Timestamp   uint32
 	Data        []byte
 	PublicKeyId []byte
@@ -17,7 +17,7 @@ func (x *DataMessage) ID() uint8 {
 func (x *DataMessage) Marshal(r protocol.IO) error {
 	var length uint16
 	r.BEUint16(&length)
-	r.Bytes(&x.Nonce, 1)
+	r.Uint8(&x.Nonce)
 	r.BEUint32(&x.Timestamp)
 	r.Bytes(&x.Data, int(length-1-4-4-512)) // Stupid protocol spec
 	r.Bytes(&x.PublicKeyId, 4)

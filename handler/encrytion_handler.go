@@ -20,18 +20,18 @@ func NewEncryptionHandler(key []byte) *EncryptionHandler {
 	}
 }
 
-func (e *EncryptionHandler) Encrypt(plaintext []byte, nonce []byte) ([]byte, error) {
+func (e *EncryptionHandler) Encrypt(plaintext []byte, nonce byte) ([]byte, error) {
 	return e.xORKeyStream(plaintext, nonce)
 }
 
-func (e *EncryptionHandler) Decrypt(ciphertext []byte, nonce []byte) ([]byte, error) {
+func (e *EncryptionHandler) Decrypt(ciphertext []byte, nonce byte) ([]byte, error) {
 	return e.xORKeyStream(ciphertext, nonce)
 }
 
-func (e *EncryptionHandler) xORKeyStream(streamText []byte, nonce []byte) ([]byte, error) {
+func (e *EncryptionHandler) xORKeyStream(streamText []byte, nonce byte) ([]byte, error) {
 	// IV: 15 zero bytes + 1-byte nonce at the end
 	iv := make([]byte, 16)
-	iv[15] = nonce[0]
+	iv[15] = nonce
 
 	stream := cipher.NewCTR(e.block, iv)
 	text := make([]byte, len(streamText))
@@ -41,12 +41,13 @@ func (e *EncryptionHandler) xORKeyStream(streamText []byte, nonce []byte) ([]byt
 }
 
 func XORBytes(a, b []byte) []byte {
-	if len(a) != len(b) {
-		panic("lengths of a and b must be equal")
+	minLength := len(a)
+	if len(b) < minLength {
+		minLength = len(b)
 	}
 
-	result := make([]byte, len(a))
-	for i := range a {
+	result := make([]byte, minLength)
+	for i := 0; i < minLength; i++ {
 		result[i] = a[i] ^ b[i]
 	}
 	return result

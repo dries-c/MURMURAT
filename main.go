@@ -14,7 +14,7 @@ import (
 // the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.</p>
 
 func main() {
-	testPCAP()
+	testNonceReuse()
 }
 
 func testAES() {
@@ -29,7 +29,7 @@ func testAES() {
 	plaintext, _ := hex.DecodeString("68656c6c6f")
 
 	originalCiphertext, _ := hex.DecodeString("11aa84cd1c")
-	calculateCiphertext, _ := encryptionHandler.Encrypt(plaintext, nonce)
+	calculateCiphertext, _ := encryptionHandler.Encrypt(plaintext, nonce[0])
 
 	if string(originalCiphertext) == string(calculateCiphertext) {
 		fmt.Println("Ciphertext is correct")
@@ -37,7 +37,7 @@ func testAES() {
 		fmt.Println("Ciphertext is incorrect")
 	}
 
-	calculatePlaintext, _ := encryptionHandler.Decrypt(originalCiphertext, nonce)
+	calculatePlaintext, _ := encryptionHandler.Decrypt(originalCiphertext, nonce[0])
 	if string(plaintext) == string(calculatePlaintext) {
 		fmt.Println("Plaintext is correct")
 	} else {
@@ -85,12 +85,22 @@ func testRSA() {
 	fmt.Println("Data message decoded successfully")
 }
 
-func testPCAP() {
+func getServerIP() net.IP {
+	IP := net.ParseIP("77.102.50.25")
+	if IP == nil {
+		panic("Invalid IP address")
+	}
+
+	return IP
+}
+
+func buildNonceXORMap() map[uint8][]byte {
 	packetHandler := handler.NewPacketHandler()
+	keystreams := make(map[uint8][]byte)
 
-	expectedBytes := []byte("Oh Great Leader of Cordovania, beacon of wisdom and strength, we humbly offer our deepest gratitude. Under your guiding hand, our nation prospers, our people stand united, and our future shines bright. Your vision brings peace, your courage inspires, and your justice uplifts the worthy. We thank you for the blessings of stability, the gift of progress, and the unwavering hope you instill in every heart. May your wisdom continue to illuminate our path, and may Cordovania flourish under your eternal guidance. With loyalty and devotion, we give thanks.")
+	var expectedBytes []byte
+	expectedBytes = []byte("Oh Great Leader of Cordovania, beacon of wisdom\nand strength, we humbly offer our deepest gratitude.\nUnder your guiding hand, our nation prospers, our\npeople stand united, and our future shines bright.\nYour vision brings peace, your courage inspires, and\nyour justice uplifts the worthy. We thank you for the\nblessings of stability, the gift of progress, and the\nunwavering hope you instill in every heart. May your\nwisdom continue to illuminate our path, and may\nCordovania flourish under your eternal guidance.\nWith loyalty and devotion, we give thanks.")
 
-	var previousData []byte
 	packetHandler.RegisterListener(message.IDData, func(msg message.Message) error {
 		dataMessage, ok := msg.(*message.DataMessage)
 		if !ok {
@@ -99,25 +109,39 @@ func testPCAP() {
 
 		timestamp := time.Unix(int64(dataMessage.Timestamp), 0)
 		if timestamp.Month() == time.February && timestamp.Day() == 14 {
-			if previousData != nil {
-				xorCiphertexts := handler.XORBytes(previousData, dataMessage.Data)
-				recoveredPlainText := handler.XORBytes(xorCiphertexts, expectedBytes)
-
-				fmt.Println("Recovered Plaintext:", string(recoveredPlainText))
-			}
-
-			previousData = dataMessage.Data
+			keystreams[dataMessage.Nonce] = handler.XORBytes(dataMessage.Data, expectedBytes)
 		}
 
 		return nil
 	})
 
-	IP := net.ParseIP("77.102.50.25")
-	if IP == nil {
-		log.Fatal("Invalid IP address")
+	err := LoadPCAP("aac-r-ts-capture-fbropt.pcapng", getServerIP(), packetHandler)
+	if err != nil {
+		log.Fatalf("Error loading PCAP: %v", err)
 	}
 
-	err := LoadPCAP("aac-r-ts-capture-fbropt.pcapng", IP, packetHandler)
+	return keystreams
+}
+
+func testNonceReuse() {
+	packetHandler := handler.NewPacketHandler()
+	nonceXORMap := buildNonceXORMap()
+
+	packetHandler.RegisterListener(message.IDData, func(msg message.Message) error {
+		dataMessage, ok := msg.(*message.DataMessage)
+		if !ok {
+			return fmt.Errorf("invalid message type")
+		}
+
+		if nonceXORMap[dataMessage.Nonce] != nil {
+			decryptedData := handler.XORBytes(dataMessage.Data, nonceXORMap[dataMessage.Nonce])
+			fmt.Printf("Decrypted Data: %s\n", string(decryptedData))
+		}
+
+		return nil
+	})
+
+	err := LoadPCAP("aac-r-ts-capture-fbropt.pcapng", getServerIP(), packetHandler)
 	if err != nil {
 		log.Fatalf("Error loading PCAP: %v", err)
 	}
