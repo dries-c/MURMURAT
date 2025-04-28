@@ -19,7 +19,7 @@ func (x *DataMessage) Marshal(r protocol.IO) error {
 	r.BEUint16(&length)
 	r.Bytes(&x.nonce, 1)
 	r.BEUint32(&x.timestamp)
-	r.Bytes(&x.data, int(length-4-512)) // Stupid implementation
+	r.Bytes(&x.data, int(length-1-4-4-512)) // Stupid implementation
 	r.Bytes(&x.publicKeyId, 4)
 	r.Bytes(&x.signature, 512)
 	return nil
