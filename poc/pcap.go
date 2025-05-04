@@ -1,4 +1,4 @@
-package main
+package poc
 
 import (
 	"MURMURAT/handler"
@@ -11,7 +11,7 @@ import (
 	"github.com/google/gopacket/layers"
 )
 
-func LoadPCAP(filePath string, src net.IP, handler *handler.PacketHander) error {
+func LoadPCAP(filePath string, src net.IP, handler *handler.PacketHandler) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open PCAPNG file: %w", err)

@@ -3,6 +3,7 @@ package handler
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 )
 
 type EncryptionHandler struct {
@@ -38,6 +39,15 @@ func (e *EncryptionHandler) xORKeyStream(streamText []byte, nonce byte) ([]byte,
 	stream.XORKeyStream(text, streamText)
 
 	return text, nil
+}
+
+func (e *EncryptionHandler) GenerateNonce() (byte, error) {
+	var b [1]byte
+	_, err := rand.Read(b[:])
+	if err != nil {
+		return 0, err
+	}
+	return b[0], nil
 }
 
 func XORBytes(a, b []byte) []byte {

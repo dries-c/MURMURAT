@@ -4,7 +4,9 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/sha3"
+	"encoding/binary"
 	"math/big"
 )
 
@@ -16,7 +18,13 @@ type SignatureCreator struct {
 	privateKey *rsa.PrivateKey
 }
 
-func NewSignatureCreator(privateKey *rsa.PrivateKey) *SignatureCreator {
+func NewSignatureCreator() *SignatureCreator {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		panic("failed to generate private key: " + err.Error())
+	}
+
+	privateKey.E = 65537
 	return &SignatureCreator{
 		privateKey: privateKey,
 	}
@@ -28,11 +36,15 @@ func NewSignatureVerifier(publicKey *rsa.PublicKey) *SignatureVerifier {
 	}
 }
 
-func RSAPublicKeyFromBytes(modulusBytes []byte, exponent int) *rsa.PublicKey {
+func NewSignatureVerifierFromBytes(modulusBytes []byte) *SignatureVerifier {
 	modulus := new(big.Int).SetBytes(modulusBytes)
-	return &rsa.PublicKey{
+	publicKey := &rsa.PublicKey{
 		N: modulus,
-		E: exponent,
+		E: 65537,
+	}
+
+	return &SignatureVerifier{
+		publicKey: publicKey,
 	}
 }
 
@@ -44,8 +56,16 @@ func hashData(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	hashed := hash.Sum(nil)
-	return hashed, nil
+	return hash.Sum(nil), nil
+}
+
+func (h *SignatureCreator) GetPublicKey() *rsa.PublicKey {
+	return &h.privateKey.PublicKey
+}
+
+func (h *SignatureCreator) GetPublicKeyId() uint32 {
+	hash := sha256.Sum256(h.privateKey.PublicKey.N.Bytes())
+	return binary.BigEndian.Uint32(hash[:4])
 }
 
 func (h *SignatureCreator) Sign(data []byte) ([]byte, error) {

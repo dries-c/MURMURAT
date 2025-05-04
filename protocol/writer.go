@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"crypto/rsa"
 	"io"
 )
 
@@ -28,6 +29,12 @@ func (w *Writer) Bytes(x *[]byte, n int) {
 	if _, err := w.w.Write((*x)[:n]); err != nil {
 		w.panic(err)
 	}
+}
+
+func (w *Writer) RSAPublicKey(key **rsa.PublicKey) {
+	paddedKey := make([]byte, 512)
+	copy(paddedKey, (*key).N.Bytes())
+	w.Bytes(&paddedKey, 512)
 }
 
 func (w *Writer) panic(err error) {

@@ -1,7 +1,9 @@
 package protocol
 
 import (
+	"crypto/rsa"
 	"io"
+	"math/big"
 )
 
 type Reader struct {
@@ -32,6 +34,18 @@ func (r *Reader) Bytes(x *[]byte, n int) {
 		r.panic(err)
 	}
 	*x = b
+}
+
+func (r *Reader) RSAPublicKey(key **rsa.PublicKey) {
+	b := make([]byte, 512)
+	if _, err := r.r.Read(b); err != nil {
+		r.panic(err)
+	}
+
+	*key = &rsa.PublicKey{
+		N: new(big.Int).SetBytes(b),
+		E: 65537,
+	}
 }
 
 func (r *Reader) panic(err error) {

@@ -1,10 +1,13 @@
 package message
 
-import "MURMURAT/protocol"
+import (
+	"MURMURAT/protocol"
+	"crypto/rsa"
+)
 
 type HelloMessage struct {
-	PublicKeyId  []byte
-	RsaPublicKey []byte
+	PublicKeyId  uint32
+	RsaPublicKey *rsa.PublicKey
 }
 
 func (x *HelloMessage) ID() uint8 {
@@ -12,7 +15,7 @@ func (x *HelloMessage) ID() uint8 {
 }
 
 func (x *HelloMessage) Marshal(r protocol.IO) error {
-	r.Bytes(&x.PublicKeyId, 4)
-	r.Bytes(&x.RsaPublicKey, 512)
+	r.BEUint32(&x.PublicKeyId)
+	r.RSAPublicKey(&x.RsaPublicKey)
 	return nil
 }
