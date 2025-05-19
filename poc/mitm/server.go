@@ -1,14 +1,16 @@
 package mitm
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Server struct {
 	base *Base
 }
 
 func NewServer(srcPort int) *Server {
-	base := NewBase(srcPort)
-	base.SetOnNewSessionCreated(func(session *Session, client bool) {
+	base := newBase(srcPort)
+	base.setOnNewSessionCreated(func(session *Session, client bool) {
 		if client {
 			return
 		}
@@ -24,6 +26,19 @@ func NewServer(srcPort int) *Server {
 	}
 }
 
+func (s *Server) SetOnSessionInitialized(onSessionCreated func(session *Session)) {
+	s.base.onSessionInitialized = func(session *Session, client bool) error {
+		if client {
+			return nil
+		}
+
+		if onSessionCreated != nil {
+			onSessionCreated(session)
+		}
+		return nil
+	}
+}
+
 func (c *Server) Start() {
-	c.base.Start()
+	c.base.start()
 }

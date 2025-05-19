@@ -12,8 +12,8 @@ type Proxy struct {
 }
 
 func NewProxy(target net.Addr, srcPort int) *Proxy {
-	server := NewBase(srcPort)
-	server.SetOnNewSessionCreated(func(session *Session, client bool) {
+	server := newBase(srcPort)
+	server.setOnNewSessionCreated(func(session *Session, client bool) {
 		if client {
 			return
 		}
@@ -22,7 +22,7 @@ func NewProxy(target net.Addr, srcPort int) *Proxy {
 		var cache [][]byte
 
 		clientSession := server.getSession(target, true)
-		server.SetOnSessionInitialized(func(session *Session, client bool) error {
+		server.setOnSessionInitialized(func(session *Session, client bool) error {
 			if !client || isConnected || session != clientSession {
 				return nil
 			}
@@ -61,5 +61,5 @@ func NewProxy(target net.Addr, srcPort int) *Proxy {
 }
 
 func (c *Proxy) Start() {
-	c.server.Start()
+	c.server.start()
 }

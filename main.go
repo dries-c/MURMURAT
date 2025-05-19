@@ -1,15 +1,40 @@
 package main
 
 import (
+	"MURMURAT/poc"
 	"MURMURAT/poc/mitm"
 	"net"
 )
 
 func main() {
 	//poc.NonceReusePOC()
-	//testRSA()
-	//clientServerTest()
-	mitmTest()
+	//poc.MitmTest()
+	//poc.TestCribDragging()
+	//poc.Replay()
+	//poc.Delay()
+	poc.DhSpoof()
+}
+
+func serverTest() {
+	serverAddr := &net.UDPAddr{
+		IP:   net.IPv4(127, 0, 0, 1),
+		Port: 1234,
+	}
+
+	server := mitm.NewServer(serverAddr.Port)
+	server.Start()
+}
+
+func clientTest() {
+	serverAddr := &net.UDPAddr{
+		IP:   net.IPv4(172, 23, 36, 217),
+		Port: 4321,
+	}
+
+	client := mitm.NewClient(serverAddr, 1234, func(session *mitm.Session) error {
+		return session.SendDataMessage([]byte("Hello from client"))
+	})
+	client.Start()
 }
 
 func clientServerTest() {
@@ -24,27 +49,5 @@ func clientServerTest() {
 	server := mitm.NewServer(serverAddr.Port)
 
 	go server.Start()
-	client.Start()
-}
-
-func mitmTest() {
-	serverAddr := &net.UDPAddr{
-		IP:   net.IPv4(127, 0, 0, 1),
-		Port: 1234,
-	}
-
-	proxyAddr := &net.UDPAddr{
-		IP:   net.IPv4(127, 0, 0, 1),
-		Port: 1235,
-	}
-
-	client := mitm.NewClient(proxyAddr, 0, func(session *mitm.Session) error {
-		return session.SendDataMessage([]byte("Hello from client"))
-	})
-	proxy := mitm.NewProxy(serverAddr, proxyAddr.Port)
-	server := mitm.NewServer(serverAddr.Port)
-
-	go server.Start()
-	go proxy.Start()
 	client.Start()
 }

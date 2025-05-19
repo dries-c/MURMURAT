@@ -13,7 +13,7 @@ type Base struct {
 	onSessionInitialized func(session *Session, client bool) error
 }
 
-func NewBase(srcPort int) *Base {
+func newBase(srcPort int) *Base {
 	udp, err := NewUDP(net.IPv4(0, 0, 0, 0), srcPort)
 	if err != nil {
 		log.Fatalf("Error creating UDP connection: %v", err)
@@ -25,13 +25,17 @@ func NewBase(srcPort int) *Base {
 	}
 }
 
-func (s *Base) Start() {
+func (s *Base) start() {
 	bytes := make([]byte, 1024)
 
 	for {
 		read, addr, err := s.udp.Read(bytes)
 		if err != nil {
 			log.Printf("Error reading from UDP: %v", err)
+			continue
+		}
+
+		if read == 0 {
 			continue
 		}
 
@@ -70,11 +74,11 @@ func (s *Base) getSession(addr net.Addr, client bool) *Session {
 	return newSession
 }
 
-func (s *Base) SetOnNewSessionCreated(callback func(session *Session, client bool)) {
+func (s *Base) setOnNewSessionCreated(callback func(session *Session, client bool)) {
 	s.onSessionCreated = callback
 }
 
-func (s *Base) SetOnSessionInitialized(callback func(session *Session, client bool) error) {
+func (s *Base) setOnSessionInitialized(callback func(session *Session, client bool) error) {
 	s.onSessionInitialized = callback
 }
 

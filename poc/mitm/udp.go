@@ -8,7 +8,8 @@ import (
 )
 
 type UDP struct {
-	conn *net.UDPConn
+	conn    *net.UDPConn
+	snooper func(udp *UDP, buf []byte, addr net.Addr, incoming bool) bool
 }
 
 func NewUDP(src net.IP, port int) (*UDP, error) {
@@ -32,10 +33,16 @@ func (udp *UDP) Read(buf []byte) (int, net.Addr, error) {
 		return 0, nil, err
 	}
 
+	if udp.snooper != nil {
+		if !udp.snooper(udp, buf[:n], addr, true) {
+			return 0, nil, nil
+		}
+	}
+
 	return n, addr, nil
 }
 
-func (udp *UDP) write(buf []byte, addr net.Addr) (int, error) {
+func (udp *UDP) Write(buf []byte, addr net.Addr) (int, error) {
 	n, err := udp.conn.WriteToUDP(buf, addr.(*net.UDPAddr))
 	if err != nil {
 		return 0, err
@@ -44,7 +51,11 @@ func (udp *UDP) write(buf []byte, addr net.Addr) (int, error) {
 	return n, nil
 }
 
-func (udp *UDP) WritePacket(msg message.Message, addr net.Addr) (int, error) {
+func (udp *UDP) registerSnooper(snooper func(udp *UDP, buf []byte, addr net.Addr, incoming bool) bool) {
+	udp.snooper = snooper
+}
+
+func (udp *UDP) WritePacket(msg message.Message, addr net.Addr, ignoreSnooper bool) (int, error) {
 	buf := bytes.NewBuffer(nil)
 	writer := protocol.NewWriter(buf)
 
@@ -60,5 +71,11 @@ func (udp *UDP) WritePacket(msg message.Message, addr net.Addr) (int, error) {
 		return 0, err
 	}
 
-	return udp.write(buf.Bytes(), addr)
+	if !ignoreSnooper && udp.snooper != nil {
+		if !udp.snooper(udp, buf.Bytes(), addr, false) {
+			return 0, nil
+		}
+	}
+
+	return udp.Write(buf.Bytes(), addr)
 }

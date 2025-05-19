@@ -3,20 +3,16 @@ package poc
 import (
 	"MURMURAT/handler"
 	"MURMURAT/protocol/message"
+	"bytes"
+	"encoding/hex"
 	"fmt"
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+	"github.com/google/gopacket/pcapgo"
 	"log"
-	"net"
+	"os"
 	"time"
 )
-
-func getServerIP() net.IP {
-	IP := net.ParseIP("77.102.50.25")
-	if IP == nil {
-		panic("Invalid IP address")
-	}
-
-	return IP
-}
 
 func buildNonceXORMap() map[uint8][]byte {
 	keystreams := make(map[uint8][]byte)
@@ -37,7 +33,7 @@ func buildNonceXORMap() map[uint8][]byte {
 		return nil
 	})
 
-	err := LoadPCAP("aac-r-ts-capture-fbropt.pcapng", getServerIP(), packetHandler)
+	err := loadPCAP("aac-r-ts-capture-fbropt.pcapng", packetHandler)
 	if err != nil {
 		log.Fatalf("Error loading PCAP: %v", err)
 	}
@@ -49,6 +45,12 @@ func NonceReusePOC() {
 	packetHandler := handler.NewPacketHandler()
 	nonceXORMap := buildNonceXORMap()
 
+	outputFile, err := os.Create("decrypted_data.txt")
+	if err != nil {
+		log.Fatalf("Error creating output file: %v", err)
+	}
+	defer outputFile.Close()
+
 	packetHandler.RegisterListener(message.IDData, func(msg message.Message) error {
 		dataMessage, ok := msg.(*message.DataMessage)
 		if !ok {
@@ -57,14 +59,59 @@ func NonceReusePOC() {
 
 		if nonceXORMap[dataMessage.Nonce] != nil {
 			decryptedData := handler.XORBytes(dataMessage.Data, nonceXORMap[dataMessage.Nonce])
-			fmt.Printf("Decrypted Data: %s\n", string(decryptedData))
+
+			if bytes.Contains(decryptedData, []byte("48.116N")) && bytes.Contains(decryptedData, []byte("72.883E")) {
+				fmt.Println("Partial token:\n", hex.EncodeToString(nonceXORMap[dataMessage.Nonce]))
+				fmt.Println("Encrypted data:\n", hex.EncodeToString(dataMessage.Data))
+			}
+
+			_, err := outputFile.WriteString(fmt.Sprintf("%s\n", string(decryptedData)))
+			if err != nil {
+				return fmt.Errorf("error writing to file: %w", err)
+			}
 		}
 
 		return nil
 	})
 
-	err := LoadPCAP("aac-r-ts-capture-fbropt.pcapng", getServerIP(), packetHandler)
+	err = loadPCAP("aac-r-ts-capture-fbropt.pcapng", packetHandler)
 	if err != nil {
 		log.Fatalf("Error loading PCAP: %v", err)
 	}
+}
+
+func loadPCAP(filePath string, handler *handler.PacketHandler) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open PCAPNG file: %w", err)
+	}
+	defer file.Close()
+
+	reader, err := pcapgo.NewNgReader(file, pcapgo.DefaultNgReaderOptions)
+	if err != nil {
+		return fmt.Errorf("failed to create PCAPNG reader: %w", err)
+	}
+
+	packetSource := gopacket.NewPacketSource(reader, layers.IPProtocolIPv4)
+
+	for packet := range packetSource.Packets() {
+		networkLayer := packet.NetworkLayer()
+		if networkLayer == nil {
+			continue
+		}
+
+		udpLayer := packet.Layer(layers.LayerTypeUDP)
+		if udpLayer == nil {
+			return fmt.Errorf("no UDP layer found in packet")
+		}
+
+		udp, _ := udpLayer.(*layers.UDP)
+
+		err := handler.Handle(udp.Payload)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

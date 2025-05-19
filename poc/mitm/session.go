@@ -116,7 +116,7 @@ func (s *Session) SetOnDataReceived(callback func(data []byte) error) {
 }
 
 func (s *Session) SendMessage(msg message.Message) error {
-	_, err := s.udp.WritePacket(msg, s.addr)
+	_, err := s.udp.WritePacket(msg, s.addr, false)
 	return err
 }
 
