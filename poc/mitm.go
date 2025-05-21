@@ -8,7 +8,7 @@ import (
 func MitmTest() {
 	serverAddr := &net.UDPAddr{
 		IP:   net.IPv4(127, 0, 0, 1),
-		Port: 1234,
+		Port: 1236,
 	}
 
 	proxyAddr := &net.UDPAddr{
@@ -16,7 +16,7 @@ func MitmTest() {
 		Port: 1235,
 	}
 
-	client := mitm.NewClient(proxyAddr, 0, func(session *mitm.Session) error {
+	client := mitm.NewClient(proxyAddr, 1234, func(session *mitm.Session) error {
 		return session.SendDataMessage([]byte("Hello from client"))
 	})
 	proxy := mitm.NewProxy(serverAddr, proxyAddr.Port)

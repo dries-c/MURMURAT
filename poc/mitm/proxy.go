@@ -1,7 +1,6 @@
 package mitm
 
 import (
-	"MURMURAT/protocol/message"
 	"fmt"
 	"net"
 )
@@ -36,12 +35,7 @@ func NewProxy(target net.Addr, srcPort int) *Proxy {
 
 			return nil
 		})
-		session.PacketHandler.RegisterListener(message.IDDH, func(msg message.Message) error {
-			return clientSession.SendDHMessage()
-		})
-		session.PacketHandler.RegisterListener(message.IDHello, func(msg message.Message) error {
-			return clientSession.SendHelloMessage()
-		})
+
 		session.SetOnDataReceived(func(data []byte) error {
 			fmt.Println("Proxy received data from client:", string(data))
 

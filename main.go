@@ -7,12 +7,11 @@ import (
 )
 
 func main() {
+	poc.MitmTest()
 	//poc.NonceReusePOC()
-	//poc.MitmTest()
-	//poc.TestCribDragging()
 	//poc.Replay()
 	//poc.Delay()
-	poc.DhSpoof()
+	//poc.DhSpoof()
 }
 
 func serverTest() {
